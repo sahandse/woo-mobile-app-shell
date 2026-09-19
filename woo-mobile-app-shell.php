@@ -3,7 +3,7 @@
  * Plugin Name: پوسته اپ موبایل ووکامرس
  * Plugin URI: https://github.com/sahandse/woo-mobile-app-shell
  * Description: تبدیل ظاهر موبایل فروشگاه ووکامرس به تجربه‌ای شبیه اپلیکیشن با نوار پایین، Splash و ساختار PWA.
- * Version: 1.0.1
+ * Version: 1.1.0
  * Author: Sahand Rezvan
  * Author URI: https://github.com/sahandse
  * Text Domain: woo-mobile-app-shell
@@ -15,7 +15,7 @@
 defined('ABSPATH') || exit;
 
 final class WMAS_Plugin {
-    const VERSION = '1.0.1';
+    const VERSION = '1.1.0';
     const OPTION  = 'wmas_settings';
 
     public function __construct() {
@@ -45,6 +45,12 @@ final class WMAS_Plugin {
         add_action('wp_enqueue_scripts', [$this, 'frontend_assets']);
         add_action('wp_footer', [$this, 'bottom_nav']);
         add_action('wp_head', [$this, 'mobile_meta']);
+        add_action('wp_footer', [$this, 'splash']);
+        add_action('wp_footer', [$this, 'ajax_search_ui']);
+        add_action('wp_ajax_wmas_search_products', [$this, 'ajax_search_products']);
+        add_action('wp_ajax_nopriv_wmas_search_products', [$this, 'ajax_search_products']);
+        add_action('init', [$this, 'pwa_routes']);
+        add_action('template_redirect', [$this, 'serve_pwa_files']);
     }
 
     public function woocommerce_notice() {
@@ -177,8 +183,8 @@ final class WMAS_Plugin {
                     </section>
 
                     <section class="wmas-card">
-                        <h2>وضعیت توسعه</h2>
-                        <p>هسته پوسته موبایل و Bottom Navigation آماده است. Home Builder، جستجوی Ajax، Bottom Sheet فیلترها، OTP و Push Notification در نسخه‌های بعدی همین Repo تکمیل می‌شود.</p>
+                        <h2>PWA و جستجوی زنده</h2>
+                        <p>Manifest و Service Worker واقعی فعال است و جستجوی Ajax محصولات از نوار موبایل انجام می‌شود. OTP و Push به Providerهای خارجی وابسته‌اند و جداگانه پیکربندی می‌شوند.</p>
                     </section>
                 </div>
 
@@ -194,6 +200,10 @@ final class WMAS_Plugin {
 
         echo '<meta name="theme-color" content="' . esc_attr($s['accent']) . '">';
         echo '<meta name="mobile-web-app-capable" content="yes">';
+        if('yes'===$s['enable_pwa']){
+            echo '<link rel="manifest" href="' . esc_url(home_url('/wmas-manifest.webmanifest')) . '">';
+            echo '<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("' . esc_url(home_url('/wmas-sw.js')) . '").catch(()=>{}));}</script>';
+        }
     }
 
     public function bottom_nav() {
@@ -214,7 +224,69 @@ final class WMAS_Plugin {
         echo '<a href="' . esc_url($cart) . '"><span>🛒</span><small>' . esc_html($s['cart_label']) . '</small></a>';
         echo '<a href="' . esc_url($account) . '"><span>◉</span><small>' . esc_html($s['account_label']) . '</small></a>';
         echo '</nav>';
+    }    public function pwa_routes() {
+        add_rewrite_rule('^wmas-manifest\.webmanifest$','index.php?wmas_pwa=manifest','top');
+        add_rewrite_rule('^wmas-sw\.js$','index.php?wmas_pwa=sw','top');
+        add_rewrite_tag('%wmas_pwa%','([^&]+)');
     }
+
+    public function serve_pwa_files() {
+        $type=get_query_var('wmas_pwa');
+        if(!$type) return;
+        $s=$this->settings();
+        if('yes'!==$s['enable_pwa']) { status_header(404); exit; }
+
+        if('manifest'===$type){
+            header('Content-Type: application/manifest+json; charset=utf-8');
+            echo wp_json_encode([
+                'name'=>get_bloginfo('name'),
+                'short_name'=>get_bloginfo('name'),
+                'start_url'=>home_url('/'),
+                'display'=>'standalone',
+                'background_color'=>'#ffffff',
+                'theme_color'=>$s['accent'],
+                'icons'=>[]
+            ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        if('sw'===$type){
+            header('Content-Type: application/javascript; charset=utf-8');
+            echo "const CACHE='wmas-v1';self.addEventListener('install',e=>{self.skipWaiting();});self.addEventListener('activate',e=>{e.waitUntil(self.clients.claim());});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});";
+            exit;
+        }
+    }
+
+    public function splash() {
+        $s=$this->settings();
+        if(!wp_is_mobile()||'yes'!==$s['enabled']||'yes'!==$s['show_splash']) return;
+        echo '<div id="wmas-splash" style="position:fixed;inset:0;z-index:999999;background:#fff;display:grid;place-items:center"><div style="text-align:center"><strong style="font-size:22px">'.esc_html(get_bloginfo('name')).'</strong><div style="margin-top:12px;color:'.esc_attr($s['accent']).'">● ● ●</div></div></div>';
+        echo '<script>window.addEventListener("load",()=>{const s=document.getElementById("wmas-splash");if(s)setTimeout(()=>{s.style.opacity="0";s.style.transition="opacity .25s";setTimeout(()=>s.remove(),260)},350)});</script>';
+    }
+
+    public function ajax_search_ui() {
+        $s=$this->settings();
+        if(!wp_is_mobile()||'yes'!==$s['enabled']) return;
+        echo '<div class="wmas-search-sheet" hidden><div class="wmas-search-box"><input type="search" placeholder="جستجوی محصول…"><button type="button" class="wmas-search-close">×</button><div class="wmas-search-results"></div></div></div>';
+        echo '<button type="button" class="wmas-search-fab" aria-label="جستجو">⌕</button>';
+        echo '<script>(function(){const sheet=document.querySelector(".wmas-search-sheet"),open=document.querySelector(".wmas-search-fab"),close=document.querySelector(".wmas-search-close"),input=sheet?.querySelector("input"),results=sheet?.querySelector(".wmas-search-results");if(!sheet||!open)return;open.onclick=()=>{sheet.hidden=false;input.focus()};close.onclick=()=>sheet.hidden=true;let t;input.addEventListener("input",()=>{clearTimeout(t);t=setTimeout(async()=>{const q=input.value.trim();if(q.length<2){results.innerHTML="";return;}results.innerHTML="در حال جستجو…";const b=new URLSearchParams({action:"wmas_search_products",q});const r=await fetch("'.esc_url(admin_url('admin-ajax.php')).'",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:b});const j=await r.json();results.innerHTML=j.success?j.data.html:"نتیجه‌ای پیدا نشد";},250)});})();</script>';
+    }
+
+    public function ajax_search_products() {
+        $q=sanitize_text_field(wp_unslash($_POST['q']??''));
+        if(mb_strlen($q)<2) wp_send_json_success(['html'=>'']);
+        $query=new WP_Query(['post_type'=>'product','post_status'=>'publish','posts_per_page'=>8,'s'=>$q,'fields'=>'ids']);
+        ob_start();
+        foreach($query->posts as $id){
+            $p=wc_get_product($id); if(!$p) continue;
+            echo '<a href="'.esc_url(get_permalink($id)).'" style="display:flex;gap:10px;padding:10px;text-decoration:none">';
+            echo $p->get_image([48,48]);
+            echo '<span><strong>'.esc_html($p->get_name()).'</strong><small style="display:block">'.wp_kses_post($p->get_price_html()).'</small></span></a>';
+        }
+        wp_send_json_success(['html'=>ob_get_clean()]);
+    }
+
+
 }
 
 new WMAS_Plugin();
