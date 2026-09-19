@@ -378,6 +378,32 @@ new WMAS_Plugin();
 
 register_activation_hook(__FILE__, function(){
     add_rewrite_rule('^wmas-manifest\\.webmanifest
+    add_rewrite_rule('^wmas-sw\\.js
+    add_rewrite_tag('%wmas_pwa%','([^&]+)');
+    flush_rewrite_rules(false);
+});
+
+register_deactivation_hook(__FILE__, function(){
+    flush_rewrite_rules(false);
+});
+,'index.php?wmas_pwa=manifest','top');
+    add_rewrite_rule('^wmas-sw\\.js
+,'index.php?wmas_pwa=sw','top');
+    add_rewrite_tag('%wmas_pwa%','([^&]+)');
+    flush_rewrite_rules(false);
+});
+
+register_deactivation_hook(__FILE__, function(){
+    flush_rewrite_rules(false);
+});
+,'index.php?wmas_pwa=sw','top');
+    add_rewrite_tag('%wmas_pwa%','([^&]+)');
+    flush_rewrite_rules(false);
+});
+
+register_deactivation_hook(__FILE__, function(){
+    flush_rewrite_rules(false);
+});
 ,'index.php?wmas_pwa=manifest','top');
     add_rewrite_rule('^wmas-sw\\.js
 ,'index.php?wmas_pwa=sw','top');
