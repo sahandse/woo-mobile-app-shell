@@ -3,7 +3,7 @@
  * Plugin Name: پوسته اپ موبایل ووکامرس
  * Plugin URI: https://github.com/sahandse/woo-mobile-app-shell
  * Description: تبدیل ظاهر موبایل فروشگاه ووکامرس به تجربه‌ای شبیه اپلیکیشن با نوار پایین، Splash و ساختار PWA.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Sahand Rezvan
  * Author URI: https://github.com/sahandse
  * Text Domain: woo-mobile-app-shell
@@ -15,7 +15,7 @@
 defined('ABSPATH') || exit;
 
 final class WMAS_Plugin {
-    const VERSION = '1.0.0';
+    const VERSION = '1.0.1';
     const OPTION  = 'wmas_settings';
 
     public function __construct() {
@@ -94,6 +94,10 @@ final class WMAS_Plugin {
     }
 
     public function admin_menu() {
+        if (function_exists('s_store_register_submenu')) {
+            s_store_register_submenu('woo-mobile-app-shell', 'اپ موبایل ووکامرس', [$this, 'settings_page'], 'manage_woocommerce', 'اپ موبایل ووکامرس');
+            return;
+        }
         add_submenu_page(
             'woocommerce',
             'پوسته اپ موبایل',
