@@ -1,1 +1,18 @@
 @media(max-width:782px){body{padding-bottom:78px}.wmas-bottom-nav{position:fixed;left:12px;right:12px;bottom:12px;z-index:99999;display:grid;grid-template-columns:repeat(4,1fr);background:rgba(255,255,255,.94);backdrop-filter:blur(14px);border:1px solid #e5e7eb;border-radius:20px;box-shadow:0 12px 40px rgba(15,23,42,.14);overflow:hidden}.wmas-bottom-nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 6px;text-decoration:none;color:#374151}.wmas-bottom-nav a span{font-size:20px;line-height:1}.wmas-bottom-nav a small{font-size:11px}.wmas-bottom-nav a:hover{color:var(--wmas-accent)}}
+
+/* Mobile Home Builder */
+.wmas-home-builder{direction:rtl;padding:14px 12px 92px;background:#f8fafc}
+.wmas-home-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px;border-radius:20px;background:linear-gradient(135deg,var(--wmas-accent),#334155);color:#fff;margin-bottom:14px}
+.wmas-home-banner strong{font-size:18px}.wmas-home-banner a{color:#fff;text-decoration:none;background:rgba(255,255,255,.15);padding:8px 11px;border-radius:10px;font-size:12px}
+.wmas-home-cats{display:flex;gap:8px;overflow:auto;padding-bottom:8px}.wmas-home-cats a{flex:0 0 auto;text-decoration:none;background:#fff;border:1px solid #e2e8f0;color:#334155;padding:8px 12px;border-radius:999px;font-size:12px}
+.wmas-home-builder h2{font-size:18px;margin:16px 0 10px}.wmas-home-products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.wmas-home-product{display:block;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:8px;text-decoration:none;color:#0f172a}.wmas-home-product img{width:100%;height:auto;border-radius:12px}.wmas-home-product strong,.wmas-home-product span{display:block}.wmas-home-product strong{font-size:12px;line-height:1.7;margin-top:6px}.wmas-home-product span{font-size:12px;color:var(--wmas-accent);margin-top:3px}
+
+/* Mobile filter bottom sheet */
+.wmas-filter-open{position:fixed;left:14px;bottom:82px;z-index:9995;border:0;border-radius:999px;background:#111827;color:#fff;padding:10px 14px;box-shadow:0 10px 30px rgba(15,23,42,.2)}
+.wmas-filter-sheet{position:fixed;inset:0;z-index:99999}.wmas-filter-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.48)}
+.wmas-filter-panel{position:absolute;right:0;left:0;bottom:0;background:#fff;border-radius:24px 24px 0 0;padding:18px;max-height:78vh;overflow:auto}
+.wmas-filter-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.wmas-filter-close{border:0;background:#eef2f7;width:34px;height:34px;border-radius:10px;font-size:22px}
+.wmas-filter-panel label{display:block;margin:10px 0;font-size:13px}.wmas-filter-panel select,.wmas-filter-panel input[type=number]{width:100%;box-sizing:border-box;margin-top:6px;padding:10px;border:1px solid #dbe4ed;border-radius:11px}
+.wmas-filter-prices{display:grid;grid-template-columns:1fr 1fr;gap:8px}.wmas-filter-panel>button[type=submit]{width:100%;border:0;border-radius:12px;padding:12px;background:#111827;color:#fff;margin-top:10px}
+.wmas-otp-login{margin-bottom:18px;padding:14px;border:1px solid #e2e8f0;border-radius:18px}.wmas-login-divider{text-align:center;color:#94a3b8;font-size:12px;margin-top:14px}
