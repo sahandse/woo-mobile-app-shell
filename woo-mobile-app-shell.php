@@ -3,7 +3,7 @@
  * Plugin Name: پوسته اپ موبایل ووکامرس
  * Plugin URI: https://github.com/sahandse/woo-mobile-app-shell
  * Description: تبدیل ظاهر موبایل فروشگاه ووکامرس به تجربه‌ای شبیه اپلیکیشن با نوار پایین، Splash و ساختار PWA.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Sahand Rezvan
  * Author URI: https://github.com/sahandse
  * Text Domain: woo-mobile-app-shell
@@ -15,7 +15,7 @@
 defined('ABSPATH') || exit;
 
 final class WMAS_Plugin {
-    const VERSION = '1.1.0';
+    const VERSION = '1.2.0';
     const OPTION  = 'wmas_settings';
 
     public function __construct() {
@@ -51,6 +51,11 @@ final class WMAS_Plugin {
         add_action('wp_ajax_nopriv_wmas_search_products', [$this, 'ajax_search_products']);
         add_action('init', [$this, 'pwa_routes']);
         add_action('template_redirect', [$this, 'serve_pwa_files']);
+        add_action('woocommerce_before_main_content', [$this, 'mobile_filter_button'], 5);
+        add_action('wp_footer', [$this, 'mobile_filter_sheet']);
+        add_action('woocommerce_before_customer_login_form', [$this, 'otp_login_block'], 5);
+        add_action('woocommerce_before_shop_loop', [$this, 'apply_mobile_filters'], 1);
+        add_action('wp_body_open', [$this, 'mobile_home_builder'], 20);
     }
 
     public function woocommerce_notice() {
@@ -69,6 +74,12 @@ final class WMAS_Plugin {
             'shop_label' => 'فروشگاه',
             'cart_label' => 'سبد',
             'account_label' => 'حساب',
+            'home_builder' => 'yes',
+            'home_title' => 'پیشنهادهای امروز',
+            'home_banner_text' => 'خرید سریع و آسان از فروشگاه',
+            'home_product_count' => 8,
+            'enable_filters' => 'yes',
+            'enable_otp_login' => 'yes',
         ];
     }
 
@@ -96,6 +107,12 @@ final class WMAS_Plugin {
             'shop_label' => sanitize_text_field($in['shop_label'] ?? $d['shop_label']),
             'cart_label' => sanitize_text_field($in['cart_label'] ?? $d['cart_label']),
             'account_label' => sanitize_text_field($in['account_label'] ?? $d['account_label']),
+            'home_builder' => !empty($in['home_builder']) ? 'yes' : 'no',
+            'home_title' => sanitize_text_field($in['home_title'] ?? $d['home_title']),
+            'home_banner_text' => sanitize_text_field($in['home_banner_text'] ?? $d['home_banner_text']),
+            'home_product_count' => min(24,max(1,absint($in['home_product_count'] ?? 8))),
+            'enable_filters' => !empty($in['enable_filters']) ? 'yes' : 'no',
+            'enable_otp_login' => !empty($in['enable_otp_login']) ? 'yes' : 'no',
         ];
     }
 
@@ -167,6 +184,22 @@ final class WMAS_Plugin {
                     </section>
 
                     <section class="wmas-card">
+                        <h2>Home Builder</h2>
+                        <label class="wmas-switch"><span>صفحه خانه موبایل</span><input type="checkbox" name="<?php echo self::OPTION; ?>[home_builder]" value="1" <?php checked($s['home_builder'],'yes'); ?>></label>
+                        <label>متن بنر
+                            <input type="text" name="<?php echo self::OPTION; ?>[home_banner_text]" value="<?php echo esc_attr($s['home_banner_text']); ?>">
+                        </label>
+                        <label>عنوان محصولات
+                            <input type="text" name="<?php echo self::OPTION; ?>[home_title]" value="<?php echo esc_attr($s['home_title']); ?>">
+                        </label>
+                        <label>تعداد محصول
+                            <input type="number" min="1" max="24" name="<?php echo self::OPTION; ?>[home_product_count]" value="<?php echo esc_attr($s['home_product_count']); ?>">
+                        </label>
+                        <label class="wmas-switch"><span>Bottom Sheet فیلتر فروشگاه</span><input type="checkbox" name="<?php echo self::OPTION; ?>[enable_filters]" value="1" <?php checked($s['enable_filters'],'yes'); ?>></label>
+                        <label class="wmas-switch"><span>نمایش ورود OTP در حساب کاربری</span><input type="checkbox" name="<?php echo self::OPTION; ?>[enable_otp_login]" value="1" <?php checked($s['enable_otp_login'],'yes'); ?>></label>
+                    </section>
+
+                    <section class="wmas-card">
                         <h2>برچسب‌های منوی پایین</h2>
                         <label>خانه
                             <input type="text" name="<?php echo self::OPTION; ?>[home_label]" value="<?php echo esc_attr($s['home_label']); ?>">
@@ -184,7 +217,7 @@ final class WMAS_Plugin {
 
                     <section class="wmas-card">
                         <h2>PWA و جستجوی زنده</h2>
-                        <p>Manifest و Service Worker واقعی فعال است و جستجوی Ajax محصولات از نوار موبایل انجام می‌شود. OTP و Push به Providerهای خارجی وابسته‌اند و جداگانه پیکربندی می‌شوند.</p>
+                        <p>Manifest، Service Worker، جستجوی Ajax، Home Builder، فیلتر Bottom Sheet و اتصال OTP فعال است. Push سروری به سرویس/VAPID معتبر نیاز دارد و تا پیکربندی نشود فعال نمی‌شود.</p>
                     </section>
                 </div>
 
@@ -204,6 +237,58 @@ final class WMAS_Plugin {
             echo '<link rel="manifest" href="' . esc_url(home_url('/wmas-manifest.webmanifest')) . '">';
             echo '<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("' . esc_url(home_url('/wmas-sw.js')) . '").catch(()=>{}));}</script>';
         }
+    }
+
+    public function mobile_home_builder() {
+        $s=$this->settings();
+        if(!wp_is_mobile()||'yes'!==$s['enabled']||'yes'!==$s['home_builder']||!is_front_page()) return;
+
+        $products=wc_get_products(['status'=>'publish','limit'=>(int)$s['home_product_count'],'orderby'=>'date','order'=>'DESC']);
+        echo '<section class="wmas-home-builder" style="--wmas-accent:'.esc_attr($s['accent']).'">';
+        echo '<div class="wmas-home-banner"><strong>'.esc_html($s['home_banner_text']).'</strong><a href="'.esc_url(wc_get_page_permalink('shop')).'">مشاهده فروشگاه</a></div>';
+        $cats=get_terms(['taxonomy'=>'product_cat','hide_empty'=>true,'number'=>8,'parent'=>0]);
+        if(!is_wp_error($cats)&&$cats){
+            echo '<div class="wmas-home-cats">';
+            foreach($cats as $cat) echo '<a href="'.esc_url(get_term_link($cat)).'">'.esc_html($cat->name).'</a>';
+            echo '</div>';
+        }
+        echo '<h2>'.esc_html($s['home_title']).'</h2><div class="wmas-home-products">';
+        foreach($products as $product){
+            echo '<a class="wmas-home-product" href="'.esc_url(get_permalink($product->get_id())).'">'.$product->get_image('woocommerce_thumbnail').'<strong>'.esc_html($product->get_name()).'</strong><span>'.wp_kses_post($product->get_price_html()).'</span></a>';
+        }
+        echo '</div></section>';
+    }
+
+    public function mobile_filter_button() {
+        $s=$this->settings();
+        if(!wp_is_mobile()||'yes'!==$s['enabled']||'yes'!==$s['enable_filters']||!is_shop()&&!is_product_taxonomy()) return;
+        echo '<button type="button" class="wmas-filter-open">فیلتر محصولات</button>';
+    }
+
+    public function mobile_filter_sheet() {
+        $s=$this->settings();
+        if(!wp_is_mobile()||'yes'!==$s['enabled']||'yes'!==$s['enable_filters']||(!is_shop()&&!is_product_taxonomy())) return;
+        $cats=get_terms(['taxonomy'=>'product_cat','hide_empty'=>true,'number'=>100]);
+        echo '<div class="wmas-filter-sheet" hidden><div class="wmas-filter-backdrop"></div><form class="wmas-filter-panel" method="get"><div class="wmas-filter-head"><strong>فیلتر محصولات</strong><button type="button" class="wmas-filter-close">×</button></div>';
+        echo '<label>دسته‌بندی<select name="product_cat"><option value="">همه</option>';
+        if(!is_wp_error($cats)) foreach($cats as $cat) echo '<option value="'.esc_attr($cat->slug).'" '.selected(sanitize_title($_GET['product_cat']??''),$cat->slug,false).'>'.esc_html($cat->name).'</option>';
+        echo '</select></label><div class="wmas-filter-prices"><label>حداقل قیمت<input type="number" name="min_price" value="'.esc_attr(absint($_GET['min_price']??0)?:'').'"></label><label>حداکثر قیمت<input type="number" name="max_price" value="'.esc_attr(absint($_GET['max_price']??0)?:'').'"></label></div>';
+        echo '<label><input type="checkbox" name="in_stock" value="1" '.checked(!empty($_GET['in_stock']),true,false).'> فقط کالاهای موجود</label><button type="submit">اعمال فیلتر</button></form></div>';
+        echo '<script>(function(){const s=document.querySelector(".wmas-filter-sheet"),o=document.querySelector(".wmas-filter-open"),c=s?.querySelector(".wmas-filter-close"),b=s?.querySelector(".wmas-filter-backdrop");if(!s||!o)return;const close=()=>s.hidden=true;o.onclick=()=>s.hidden=false;c.onclick=close;b.onclick=close;})();</script>';
+    }
+
+    public function apply_mobile_filters() {
+        if(!wp_is_mobile()||empty($_GET['in_stock'])) return;
+        add_filter('woocommerce_product_query_meta_query',function($meta){
+            $meta[]=['key'=>'_stock_status','value'=>'instock'];
+            return $meta;
+        });
+    }
+
+    public function otp_login_block() {
+        $s=$this->settings();
+        if(!wp_is_mobile()||'yes'!==$s['enable_otp_login']||!shortcode_exists('login_sms_bale')) return;
+        echo '<div class="wmas-otp-login"><h3>ورود سریع با موبایل</h3>'.do_shortcode('[login_sms_bale]').'<div class="wmas-login-divider">یا ورود با رمز عبور</div></div>';
     }
 
     public function bottom_nav() {
